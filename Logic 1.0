@@ -1,0 +1,8 @@
+dowell_e_Signature function()
+1   Start
+1.1   insert document with textbox to draw signature and upload button 
+1.2   using javascript create function draw_signature() to draw in textbox 
+1.3   using javascript create function upload_image() to upload an image
+1.4   add draw_signature() to textbox in the document 
+1.5   add upload_image() to the upload button in the document
+dowell_e_Signature function() End
