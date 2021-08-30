@@ -58,19 +58,52 @@ def assign_work_flow(doc):
 	return doc
 
 
+
+# *******************   work-flow execution part  **************************
+# pip install apscheduler
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+ 
+#signing simulation
+def simulating_signing_process(**kwargs):
+	print('Sent document for signing at', kwargs['to'])
+	import time
+	time.sleep(15)
+	print('Document Signed by: ', kwargs['to']['staff_id'])
+
+
+#event listner for scheduler fired each time job is completed
+def scheduler_event_listener(event):
+	if event.exception:
+		print('The job crashed :(')
+	else:
+		print('The job executed :)')
+
+
 def document_signing_process(doc):
-	print(doc.work_flow)
+	# initializing schedular
+	scheduler = BackgroundScheduler(executors={'default': {'type':'threadpool', 'max_workers': 1}})
+	
+	# adding Event Listner to scheduler
+	scheduler.add_listener(scheduler_event_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
+	
+	#starting scheduler
+	scheduler.start()
+
+	#for each step in work-flow adding jobs in sheduler
+	for step in doc.work_flow.keys():
+		print('Step In work-flow', step)
+		scheduler.add_job(simulating_signing_process, misfire_grace_time=None, kwargs={'to':doc.work_flow[step]})
+
 	return doc
 
 
 
-def main():
+
+# raising exception when running file directly but in flask framework I tested No exception occured 
+if __name__ == '__main__':
 	# creating the document object
 	doc = Document('Document Name', 'invoice')
 	doc = assign_work_flow(doc)
 	doc = document_signing_process(doc)
-
-
-
-if __name__ == '__main__':
-	main()
