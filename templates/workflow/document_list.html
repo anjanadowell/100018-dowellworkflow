@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}
+Documents{% endblock %}
+
+{% block content %}
+
+{% if message %}
+    <h3> {{ message }} </h3>
+{% endif%}
+
+<h1>Documents List</h1>
+<ul class="list-unstyled">
+{% for document in object_list %}
+    <li>{{ document.doc_name }} - {{ document.status_name }} - {{ document.update_time|date }} - </li>
+{% empty %}
+    <li>No articles yet.</li>
+{% endfor %}
+</ul>
+
+
+{% endblock %}
+
+
+
+
+
