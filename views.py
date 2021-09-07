@@ -12,10 +12,6 @@ from .forms import DocumentForm
 
 # Create your views here.
 
-class AllLinksView(View):
-	def get(self, request):
-		return render(request, 'workflow/alllinks.html')
-
 
 class WorkFlowCreateView(CreateView):
 	model = WorkFlowModel
