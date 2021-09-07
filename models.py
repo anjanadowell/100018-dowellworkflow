@@ -17,13 +17,13 @@ class VerificationStep(models.Model):
 
 class WorkFlowModel(models.Model):
 	title       	= models.CharField(max_length=100)
-	steps			= models.ManyToManyField(VerificationStep, blank=True, null=True)
+	steps			= models.ManyToManyField(VerificationStep, blank=True)
 	
 	class Meta:
 		ordering = ['title']
 
 	def get_absolute_url(self):
-		return reverse("workflow:work-flow-detail", kwargs={"id": self.id})
+		return reverse("workflow:detail", kwargs={"id": self.id})
 
 	def __str__(self):
 		return f'{self.title}'
@@ -35,7 +35,7 @@ class Document(models.Model):
 	work_flow 		= models.ForeignKey(WorkFlowModel, on_delete=models.CASCADE, null=True, default=None)
 	status 			= models.IntegerField(default=0)
 	status_name		= models.CharField(max_length=100, null=True)
-	update_time		= models.DateField()
+	update_time		= models.DateField(null=True)
 	notify_users 	= models.BooleanField(default=True)
 
 	def __str__(self):
@@ -45,7 +45,7 @@ class Document(models.Model):
 
 @receiver(pre_save, sender=Document)
 def document_pre_save(sender, instance, *args, **kwargs):
-	instance.updated_time = timezone.now()
+	instance.update_time = timezone.now()
 	if instance.status == 0:
 		instance.status = 1
 		instance.status_name = instance.work_flow.steps.all()[instance.status].name
