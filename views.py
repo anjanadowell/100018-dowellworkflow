@@ -7,7 +7,7 @@ from django.views.generic.edit import CreateView
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView
 
-from .models import WorkFlowModel, Document
+from .models import WorkFlowModel, DocumentType, Document
 from .forms import DocumentForm
 
 # Create your views here.
@@ -31,6 +31,8 @@ class WorkFlowDetailView(DetailView):
 		id_ = self.kwargs.get('id')
 		return get_object_or_404(WorkFlowModel, id=id_)
 
+
+
 class DocumentWorkFlowAddView(View):
 	form = DocumentForm()
 
@@ -38,9 +40,9 @@ class DocumentWorkFlowAddView(View):
 		return render(request, 'workflow/execute.html', context={'form': self.form})
 
 	def post(self, request):
-		doc = Document(doc_name=request.POST['doc_name'], doc_type=request.POST['doc_type'], work_flow=get_object_or_404(WorkFlowModel ,id=request.POST['work_flow']), notify_users = True)
+		doc = Document(document_name=request.POST['document_name'], document_type=request.POST['document_type'], notify_users = True)
 		doc.save()
-		messages.success(request, doc.doc_name + ' - Added In WorkFlow - '+ doc.work_flow.title)
+		messages.success(request, doc.document_name + ' - Added In WorkFlow - '+ doc.document_type.title)
 		return redirect('workflow:documents-in-workflow')
 
 
@@ -51,29 +53,44 @@ class DocumentExecutionListView(ListView):
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 		return context
-	
+
+
+def execute(user,status, wf):
+	authority = wf.steps.all()[status].authority
+
+	if(request.user == authority):
+
+		if :
+			status += 1
+			messages.success(request, 'Document Signed at :'+ wf.steps.all()[status_value - 1].name)
+
+		else:
+			msg = 'Document Signed at all stages.'
+	else:
+		msg = 'NOT OK, You are NOT authorised'
+		
 
 class DocumentVerificationView(View):
 	def get(self, request, **kwargs):
 		id_ = kwargs.get('id')
 		obj = get_object_or_404(Document, id=id_)
-		return render(request, 'workflow/document_verify.html', { 'object': obj})
+		return render(request, 'workflow/document_verify.html', { 'object': obj })
 
 	def post(self, request, **kwargs):
 		id_ = kwargs.get('id')
 		doc = get_object_or_404(Document, id=id_)
 
-		if(request.user == doc.work_flow.steps.all()[doc.status].authority):
-			status_value = doc.status + 1
+		execute_response = None
 
-			if status_value >= len(doc.work_flow.steps.all()):
-				messages.info(request, 'Document Signed at all stages.')
-			else:
-				doc.status += 1
-				doc.status_name = doc.work_flow.steps.all()[doc.status].name
-				doc.save()
-				messages.success(request, 'Document Signed at :'+ doc.work_flow.steps.all()[status_value - 1].name)
+		if doc.document_type.internal_work_flow and doc.internal_status < len(doc.document_type.internal_work_flow.steps.all()):
+			execute_response = execute(request.user, doc.internal_status, internal_work_flow)
+
+		elif doc.document_type.external_work_flow and doc.external_status < len(doc.document_type.external_work_flow.steps.all()):
+			execute_response = execute(request.user, doc.external_status, external_work_flow)
+
 		else:
-			messages.warning(request, 'NOT OK, You are NOT authorised')
+			execute_response = 'No WorkFlow Available'
 
-		return HttpResponse(status=200)
+		return HttpResponse(execute_response)
+
+
