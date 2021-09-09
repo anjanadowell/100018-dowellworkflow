@@ -9,15 +9,15 @@ from django.contrib.auth.models import User
 
 class VerificationStep(models.Model):
 	name 		= models.TextField(max_length=100)
-	authority	= models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+	authority	= models.ForeignKey(User, on_delete=models.SET_NULL, null=False)
 
 	def __str__(self):
-		return self.name
+		return f'{self.name} - {self.authority}'
 
 
 class WorkFlowModel(models.Model):
-	title       	= models.CharField(max_length=100)
-	steps			= models.ManyToManyField(VerificationStep, blank=True)
+	title       = models.CharField(max_length=100)
+	steps		= models.ManyToManyField(VerificationStep, blank=True)
 	
 	class Meta:
 		ordering = ['title']
@@ -29,26 +29,33 @@ class WorkFlowModel(models.Model):
 		return f'{self.title}'
 
 
-class Document(models.Model):
-	doc_name 		= models.CharField(max_length=100, null=False)
-	doc_type 		= models.CharField(max_length=100, null=False)
-	work_flow 		= models.ForeignKey(WorkFlowModel, on_delete=models.CASCADE, null=True, default=None)
-	status 			= models.IntegerField(default=0)
-	status_name		= models.CharField(max_length=100, null=True)
-	update_time		= models.DateField(null=True)
-	notify_users 	= models.BooleanField(default=True)
+class DocumentType(models.Model):
+	title       			= models.CharField(max_length=100)
+	internal_work_flow 		= models.ForeignKey(WorkFlowModel, on_delete=models.SET_NULL, null=True, default=None)
+	external_work_flow 		= models.ForeignKey(WorkFlowModel, on_delete=models.SET_NULL, null=True, default=None)
+
 
 	def __str__(self):
 		return self.doc_name
+
+class Document(models.Model):
+	document_name 		= models.CharField(max_length=100, null=False)
+	document_type 		= models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
+	internal_status		= models.IntegerField(default=0)
+	external_status		= models.IntegerField(default=0)
+	update_time			= models.DateField(null=True)
+	notify_users 		= models.BooleanField(default=True)
+
+	def __str__(self):
+		return self.document_name
 
 
 
 @receiver(pre_save, sender=Document)
 def document_pre_save(sender, instance, *args, **kwargs):
 	instance.update_time = timezone.now()
-	if instance.status == 0:
-		instance.status = 1
-		instance.status_name = instance.work_flow.steps.all()[instance.status].name
+	# if instance.status_name :
+	# 	instance.status_name = instance.work_flow.steps.all()[instance.status].name
 
 
 @receiver(post_save, sender=Document)
