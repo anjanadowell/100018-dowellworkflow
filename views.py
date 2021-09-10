@@ -14,13 +14,12 @@ from .forms import DocumentForm
 
 
 class WorkFlowCreateView(CreateView):
-	model = WorkFlowModel
+	model = DocumentType
 	success_message = '%(title)s was created successfully'
 	template_name = 'workflow/create.html'
 	fields = [
-		'title', 'steps'
+		'title', 'internal_work_flow', 'external_work_flow'
 	]
-
 
 
 class WorkFlowDetailView(DetailView):
@@ -55,20 +54,22 @@ class DocumentExecutionListView(ListView):
 		return context
 
 
-def execute(user,status, wf):
+def execute_wf(user,status, wf):
 	authority = wf.steps.all()[status].authority
 
-	if(request.user == authority):
-
-		if :
-			status += 1
-			messages.success(request, 'Document Signed at :'+ wf.steps.all()[status_value - 1].name)
-
+	if user == authority :
+		status += 1
+		if status == len(wf.steps.all()) :
+			messages.error(request, 'Document Signed at all stages.')
+			
 		else:
-			msg = 'Document Signed at all stages.'
+			messages.success(request, 'Document Signed at :'+ wf.steps.all()[status - 1].name + '.')
 	else:
-		msg = 'NOT OK, You are NOT authorised'
+		messages.error(request, 'You are NOT authorised')
 		
+	return status 
+
+
 
 class DocumentVerificationView(View):
 	def get(self, request, **kwargs):
@@ -80,16 +81,26 @@ class DocumentVerificationView(View):
 		id_ = kwargs.get('id')
 		doc = get_object_or_404(Document, id=id_)
 
-		execute_response = None
+		msg = None
+		status = None
 
 		if doc.document_type.internal_work_flow and doc.internal_status < len(doc.document_type.internal_work_flow.steps.all()):
-			execute_response = execute(request.user, doc.internal_status, internal_work_flow)
+			status = execute_wf(request.user, doc.internal_status, internal_work_flow)
+
+			if status and status != internal_status :
+				doc.internal_status = status
+
 
 		elif doc.document_type.external_work_flow and doc.external_status < len(doc.document_type.external_work_flow.steps.all()):
-			execute_response = execute(request.user, doc.external_status, external_work_flow)
+			status = execute_wf(request.user, doc.external_status, external_work_flow)
+
+			if status and status != external_status :
+				doc.external_status = status
 
 		else:
-			execute_response = 'No WorkFlow Available'
+			messages.error(request, 'No WorkFlow Available')
+
+		doc.save()
 
 		return HttpResponse(execute_response)
 
