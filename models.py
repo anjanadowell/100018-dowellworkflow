@@ -7,9 +7,9 @@ from django.contrib.auth.models import User
 
 # Create your models here.
 
-class VerificationStep(models.Model):
+class SigningStep(models.Model):
 	name 		= models.TextField(max_length=100)
-	authority	= models.ForeignKey(User, on_delete=models.SET_NULL, null=False)
+	authority	= models.ForeignKey(User, on_delete=models.CASCADE, null=False)
 
 	def __str__(self):
 		return f'{self.name} - {self.authority}'
@@ -17,13 +17,10 @@ class VerificationStep(models.Model):
 
 class WorkFlowModel(models.Model):
 	title       = models.CharField(max_length=100)
-	steps		= models.ManyToManyField(VerificationStep, blank=True)
+	steps	    = models.ManyToManyField(SigningStep, blank=True)
 	
 	class Meta:
 		ordering = ['title']
-
-	def get_absolute_url(self):
-		return reverse("workflow:detail", kwargs={"id": self.id})
 
 	def __str__(self):
 		return f'{self.title}'
@@ -31,9 +28,12 @@ class WorkFlowModel(models.Model):
 
 class DocumentType(models.Model):
 	title       			= models.CharField(max_length=100)
-	internal_work_flow 		= models.ForeignKey(WorkFlowModel, on_delete=models.SET_NULL, null=True, default=None)
-	external_work_flow 		= models.ForeignKey(WorkFlowModel, on_delete=models.SET_NULL, null=True, default=None)
+	internal_work_flow 		= models.ForeignKey(WorkFlowModel, related_name='%(class)s_internal_wf', on_delete=models.SET_NULL, null=True, default=None)
+	external_work_flow 		= models.ForeignKey(WorkFlowModel, related_name='%(class)s_external_wf', on_delete=models.SET_NULL, null=True, default=None)
 
+
+	def get_absolute_url(self):
+		return reverse("workflow:detail", kwargs={"id": self.id})
 
 	def __str__(self):
 		return self.doc_name
@@ -43,7 +43,7 @@ class Document(models.Model):
 	document_type 		= models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
 	internal_status		= models.IntegerField(default=0)
 	external_status		= models.IntegerField(default=0)
-	update_time			= models.DateField(null=True)
+	update_time		= models.DateField(null=True)
 	notify_users 		= models.BooleanField(default=True)
 
 	def __str__(self):
