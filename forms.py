@@ -4,4 +4,4 @@ from .models import Document
 class DocumentForm(ModelForm):
     class Meta:
         model = Document
-        fields = ['doc_name', 'doc_type', 'work_flow']
+        fields = ['document_name', 'document_type']
