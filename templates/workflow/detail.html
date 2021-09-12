@@ -1,20 +1,26 @@
 {% extends 'base.html' %}
-{% load crispy_forms_tags %}
+
 {% block title %}
-Document Type{% endblock %}
+{{object.title}}
+{% endblock %}
 
 {% block content %}
 
-<h1>Document Type</h1>
+<h1>{{ object.title |title}}</h1>
+<ul>
+	<li>{{ object.internal_work_flow }}
+		<ul>{% for step in object.internal_work_flow.steps.all %}
+				<li>{{ step }}</li><hr>
+			{% endfor %}
+		</ul>
+	</li>
+	<li>{{ object.external_work_flow }}
+		<ul>{% for step in object.external_work_flow.steps.all %}
+				<li>{{ step }}</li><hr>
+			{% endfor %}
+		</ul>
+	</li>
 
-{% if message %}
-    <h3> {{ message }} </h3>
-{% endif%}
-
-
-<form method="post" enctype="multipart/form-data">{% csrf_token %}
-    {{ form|crispy }}
-    <input type="submit" class="btn btn-outline-success" value="Add Document Type">
-</form>
+</ul>
 
 {% endblock %}
