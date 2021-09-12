@@ -12,7 +12,7 @@ Documents{% endblock %}
 <h1>Documents List</h1>
 <ul class="list-unstyled">
 {% for document in object_list %}
-    <li>{{ document.doc_name }} - {{ document.status_name }} - {{ document.update_time|date }} - <a href="{% url 'workflow:verify-document' document.id %}">Verify</a></li>
+    <li>{{ document.document_name }} - Internal({{ document.internal_status }}) , External({{ document.external_status }}) <a href="{% url 'workflow:verify-document' document.id %}">Sign It</a></li>
 {% empty %}
     <li>No articles yet.</li>
 {% endfor %}
@@ -20,8 +20,3 @@ Documents{% endblock %}
 
 
 {% endblock %}
-
-
-
-
-
