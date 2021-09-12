@@ -1,46 +1,19 @@
 {% extends 'base.html' %}
 
 {% block title %}
-{{object.doc_name}}
+{{object.document_name}}
 {% endblock %}
 
 {% block content %}
 
-<h1>{{ object.doc_name |title}}</h1>
-<p>{{ object.doc_type }}</p>
-<small>{{ object.update_time }}</p>
+<h1>{{ object.document_name |title}}</h1>
+<p>{{ object.document_type }}</p>
+<small>{{ object.update_time }}</small>
 
-<button id="verify-button" class="btn btn-outline-success" onclick="verify()" data-object="{{ object.id }}">Verify</button>
-
-{% csrf_token %}
-
-
-<script>
-const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-function verify(){
-    const btn =  document.getElementById('verify-button');
-    const object = btn.dataset.object;
-    console.log(object)
-
-    const request = new XMLHttpRequest();
-    request.open('PUT','/workflow/verify-document/'+ String(object), true);
-    
-    request.setRequestHeader('X-CSRFToken', csrftoken)
-    const data = {
-      id: object
-    }
-    request.send(JSON.stringify(data));
-
-    request.onload = () => {
-    	console.log(JSON.parse(request.responseText))
-      //const response_data = JSON.parse(request.responseText);
-                    
-  };
-};
-
-</script>
-
-
+<br>
+<form method="post">{% csrf_token %}
+  <input type="hidden" name="id_" value="{{ object.id }}" />
+  <input type="submit" class="btn btn-outline-success" value="Signed"/>
+</form>
 
 {% endblock %}
