@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.views import View
 from django.views.generic.edit import CreateView
@@ -13,7 +13,7 @@ from .forms import DocumentForm
 # Create your views here.
 
 
-class WorkFlowCreateView(CreateView):
+class DocumentTypeCreateView(CreateView):
 	model = DocumentType
 	success_message = '%(title)s was created successfully'
 	template_name = 'workflow/create.html'
@@ -22,13 +22,13 @@ class WorkFlowCreateView(CreateView):
 	]
 
 
-class WorkFlowDetailView(DetailView):
-	model = WorkFlowModel
+class DocumentTypeDetailView(DetailView):
+	model = DocumentType
 	template_name = 'workflow/detail.html'
 
 	def get_object(self):
 		id_ = self.kwargs.get('id')
-		return get_object_or_404(WorkFlowModel, id=id_)
+		return get_object_or_404(DocumentType, id=id_)
 
 
 
@@ -39,7 +39,7 @@ class DocumentWorkFlowAddView(View):
 		return render(request, 'workflow/execute.html', context={'form': self.form})
 
 	def post(self, request):
-		doc = Document(document_name=request.POST['document_name'], document_type=request.POST['document_type'], notify_users = True)
+		doc = Document(document_name=request.POST['document_name'], document_type=get_object_or_404(DocumentType, id=request.POST['document_type']), notify_users = True)
 		doc.save()
 		messages.success(request, doc.document_name + ' - Added In WorkFlow - '+ doc.document_type.title)
 		return redirect('workflow:documents-in-workflow')
@@ -54,10 +54,10 @@ class DocumentExecutionListView(ListView):
 		return context
 
 
-def execute_wf(user,status, wf):
+def execute_wf(request, status, wf):
 	authority = wf.steps.all()[status].authority
 
-	if user == authority :
+	if request.user == authority :
 		status += 1
 		if status == len(wf.steps.all()) :
 			messages.error(request, 'Document Signed at all stages.')
@@ -78,30 +78,25 @@ class DocumentVerificationView(View):
 		return render(request, 'workflow/document_verify.html', { 'object': obj })
 
 	def post(self, request, **kwargs):
-		id_ = kwargs.get('id')
-		doc = get_object_or_404(Document, id=id_)
-
 		msg = None
 		status = None
 
-		if doc.document_type.internal_work_flow and doc.internal_status < len(doc.document_type.internal_work_flow.steps.all()):
-			status = execute_wf(request.user, doc.internal_status, internal_work_flow)
+		doc = get_object_or_404(Document, id=request.POST['id_'])
 
-			if status and status != internal_status :
+		if doc.document_type.internal_work_flow and doc.internal_status < len(doc.document_type.internal_work_flow.steps.all()):
+			status = execute_wf(request, doc.internal_status, doc.document_type.internal_work_flow)
+			if status and status != doc.internal_status :
 				doc.internal_status = status
 
-
 		elif doc.document_type.external_work_flow and doc.external_status < len(doc.document_type.external_work_flow.steps.all()):
-			status = execute_wf(request.user, doc.external_status, external_work_flow)
-
-			if status and status != external_status :
+			status = execute_wf(request, doc.external_status, doc.document_type.external_work_flow)
+			if status and status != doc.external_status :
 				doc.external_status = status
 
 		else:
 			messages.error(request, 'No WorkFlow Available')
 
 		doc.save()
-
-		return HttpResponse(execute_response)
+		return redirect('workflow:documents-in-workflow')
 
 
