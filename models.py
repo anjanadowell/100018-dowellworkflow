@@ -33,7 +33,7 @@ class DocumentType(models.Model):
 
 
 	def get_absolute_url(self):
-		return reverse("workflow:detail", kwargs={"id": self.id})
+		return reverse("workflow:detail-document-type", kwargs={"id": self.id})
 
 	def __str__(self):
 		return self.title
@@ -45,7 +45,7 @@ class Document(models.Model):
 	internal_wf_step	= models.CharField(max_length=100, null=True, blank=True)
 	external_status		= models.IntegerField(default=0)
 	external_wf_step	= models.CharField(max_length=100, null=True, blank=True)
-	update_time			= models.DateField(null=True)
+	update_time		= models.DateField(null=True)
 	notify_users 		= models.BooleanField(default=True)
 
 	def __str__(self):
@@ -57,15 +57,6 @@ class Document(models.Model):
 def document_pre_save(sender, instance, *args, **kwargs):
 	instance.update_time = timezone.now()
 	
-	if instance.document_type.internal_work_flow and instance.document_type.external_work_flow :
-		instance.internal_wf_step = instance.document_type.internal_work_flow.steps.all()[instance.internal_status].name
-		instance.external_wf_step = instance.document_type.external_work_flow.steps.all()[instance.external_status].name
-	elif instance.document_type.internal_work_flow :
-		instance.internal_wf_step = instance.document_type.internal_work_flow.steps.all()[instance.internal_status].name
-	elif instance.document_type.external_work_flow :
-		instance.external_wf_step = instance.document_type.external_work_flow.steps.all()[instance.external_status].name
-	else:
-		pass
 
 @receiver(post_save, sender=Document)
 def document_post_save(sender, instance, created, *args, **kwargs):
