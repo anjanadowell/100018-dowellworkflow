@@ -9,14 +9,55 @@ Documents{% endblock %}
     <h3> {{ message }} </h3>
 {% endif%}
 
-<h1>Documents List</h1>
-<ul class="list-unstyled">
-{% for document in object_list %}
-    <li>{{ document.document_name }} - Internal({{ document.internal_status }}) , External({{ document.external_status }}) <a href="{% url 'workflow:verify-document' document.id %}">Sign It</a></li>
-{% empty %}
-    <li>No articles yet.</li>
-{% endfor %}
-</ul>
+<h1 class="text-center">Documents List</h1>
 
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Name</th>
+      <th scope="col">Internal WF</th>
+      <th scope="col">External WF</th>
+      <th scope="col">Signing Link</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for document in object_list %}
+    <tr>
+      <th scope="row">{{ document.id }}</th>
+      <td>{{ document.document_name|title }}</td>
+      <td>{{ document.internal_wf_step|title }}</td>
+      <td>{{ document.external_wf_step|title }}</td>
+      
+      <td>
+        {% if document.document_type.internal_work_flow is not None and document.internal_wf_step != 'complete' %}
+
+            {% for step in document.document_type.internal_work_flow.steps.all %}
+                {% if step.name == document.internal_wf_step and step.authority == request.user %}
+                    <a href="{% url 'workflow:verify-document' document.id %}">Sign It</a>
+                {% endif %}
+            {% endfor %}
+
+        {% elif document.document_type.external_work_flow is not None and document.external_wf_step != 'complete'%}
+            
+            {% for step in document.document_type.external_work_flow.steps.all %}
+                {% if step.name == document.external_wf_step and step.authority == request.user %}
+                    <a href="{% url 'workflow:verify-document' document.id %}">Sign It</a>
+                {% endif %}
+            {% endfor %}
+
+        {% else %}
+
+        {% endif %}
+        
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <th scope="row">No articles yet</th> 
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 {% endblock %}
