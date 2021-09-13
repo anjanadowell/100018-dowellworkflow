@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}
+Document Type{% endblock %}
+
+{% block content %}
+
+{% if message %}
+    <h3> {{ message }} </h3>
+{% endif%}
+
+<h1>Document Types</h1>
+<ul>
+{% for type in object_list %}
+    <li>{{ type.title|title}} - {{ type.internal_work_flow }} - {{ type.external_work_flow }} - <a href="{{ type.get_absolute_url }}">View</a></li>
+{% empty %}
+    <li>No articles yet.</li>
+{% endfor %}
+</ul>
+{% endblock %}
