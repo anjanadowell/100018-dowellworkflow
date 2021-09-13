@@ -7,14 +7,14 @@
 {% block content %}
 
 <h1>{{ object.title |title}}</h1>
-<ul>
-	<li>{{ object.internal_work_flow }}
+<ul class="list-unstyled">
+	<li><b>Internal Work Flow</b> - {{ object.internal_work_flow }}
 		<ul>{% for step in object.internal_work_flow.steps.all %}
 				<li>{{ step }}</li><hr>
 			{% endfor %}
 		</ul>
 	</li>
-	<li>{{ object.external_work_flow }}
+	<li><b>External Work Flow</b> - {{ object.external_work_flow }}
 		<ul>{% for step in object.external_work_flow.steps.all %}
 				<li>{{ step }}</li><hr>
 			{% endfor %}
