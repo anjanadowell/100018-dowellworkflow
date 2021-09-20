@@ -16,18 +16,25 @@ Documents{% endblock %}
     <tr>
       <th scope="col">ID</th>
       <th scope="col">Name</th>
-      <th scope="col">Internal WF</th>
-      <th scope="col">External WF</th>
+      <th scope="col">WorkFlow Step</th>
       <th scope="col">Signing Link</th>
     </tr>
   </thead>
   <tbody>
     {% for document in object_list %}
     <tr>
-      <th scope="row">{{ document.id }}</th>
+      <th scope="row">{{ forloop.counter }}</th>
       <td>{{ document.document_name|title }}</td>
-      <td>{{ document.internal_wf_step|title }}</td>
-      <td>{{ document.external_wf_step|title }}</td>
+      <td>
+        {% if document.internal_wf_step and document.internal_wf_step != 'complete' %}
+            {{ document.internal_wf_step|title }}
+        
+        {% else %}
+            {{ document.external_wf_step|title }}
+
+        {% endif %}
+      </td>
+      
       
       <td>
         {% if document.document_type.internal_work_flow is not None and document.internal_wf_step != 'complete' %}
@@ -53,11 +60,19 @@ Documents{% endblock %}
       </td>
     </tr>
     {% empty %}
-    <tr>
-      <th scope="row">No articles yet</th> 
-    </tr>
+    <td colspan="5" class="text-center">
+        No documents for sign.
+    </td>
     {% endfor %}
   </tbody>
 </table>
 
+
+
+
 {% endblock %}
+
+
+
+
+
