@@ -1,38 +1,76 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponseRedirect
+from django.http import JsonResponse
 from django.utils import timezone
 from django.views import View
 from django.views.generic.edit import CreateView
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView
-
-from .models import WorkFlowModel, DocumentType, Document
+import json
+from .models import SigningStep, WorkFlowModel, DocumentType, Document
 from .forms import DocumentForm
+from django.contrib.auth.models import User
+
 
 # Create your views here.
 
+def create_document_type(request, *args, **kwargs):
+	try:
+		body = json.loads(request.body)
+	except:
+		body = None
 
-class DocumentTypeCreateView(CreateView):
-	model = DocumentType
-	success_message = '%(title)s was created successfully'
-	template_name = 'workflow/create.html'
-	fields = [
-		'title', 'internal_work_flow', 'external_work_flow'
-	]
-
-class DocumentTypeListView(ListView):
-	model = DocumentType
-	paginated_by = 10
+	if not body or not body['title'] :
+		context = {
+			'object': 'Error: Title required.'
+		}
+		return JsonResponse(context)
 
 
-class DocumentTypeDetailView(DetailView):
-	model = DocumentType
-	template_name = 'workflow/detail.html'
+	internalWF = None
+	externalWF = None
 
-	def get_object(self):
-		id_ = self.kwargs.get('id')
-		return get_object_or_404(DocumentType, id=id_)
+	if len(body['internal']) :
+		internalWF = WorkFlowModel(title='internal')
+		internalWF.save()
+		for step in body['internal']:
+			s = SigningStep(name=step['name'], authority= get_object_or_404(User, username=step['authority']))
+			s.save()
+			internalWF.steps.add(s)
+		
+
+	if len(body['external']) :
+		externalWF = WorkFlowModel(title='external')
+		externalWF.save()
+		for step in body['external']:
+			s = SigningStep(name=step['name'], authority= get_object_or_404(User, username=step['authority']))
+			s.save()
+			externalWF.steps.add(s)
+		
+
+	
+	obj = DocumentType(title=body['title'], internal_work_flow=internalWF, external_work_flow=externalWF )
+	obj.save()
+
+	return JsonResponse({'id': obj.id, 'title': obj.title })
+
+
+def getDocumentTypeObject(request, *args, **kwargs):
+	obj = get_object_or_404(DocumentType, id=kwargs['id'])
+	return JsonResponse({
+			'id': obj.id,
+			'title': obj.title,
+			'internal_work_flow': {
+				'title': obj.internal_work_flow.title ,
+				'steps': [{ 'name': step.name, 'authority':step.authority.username} for step in obj.internal_work_flow.steps.all()],
+
+			},
+			'external_work_flow': {
+				'title': obj.external_work_flow.title ,
+				'steps': [{ 'name': step.name, 'authority':step.authority.username} for step in obj.external_work_flow.steps.all()],
+			}
+		}
+	)
 
 
 
@@ -40,21 +78,28 @@ class DocumentWorkFlowAddView(View):
 	form = DocumentForm()
 
 	def get(self, request):
-		return render(request, 'workflow/execute.html', context={'form': self.form})
+		user_list = User.objects.all()
+		context = {
+			'form': self.form,
+			'user_list': user_list,
+			'workflow': ['internal', 'external'] 
+		}
+		return render(request, 'workflow/add_document.html', context=context)
 
 	def post(self, request):
 		doc = Document(document_name=request.POST['document_name'], document_type=get_object_or_404(DocumentType, id=request.POST['document_type']), notify_users = True)
 
-		if doc.document_type.internal_work_flow and doc.document_type.external_work_flow :
+		if doc.document_type.internal_work_flow :
 			doc.internal_wf_step = doc.document_type.internal_work_flow.steps.all()[doc.internal_status].name
-			doc.external_wf_step = doc.document_type.external_work_flow.steps.all()[doc.external_status].name
-		elif doc.document_type.internal_work_flow :
-			doc.internal_wf_step = doc.document_type.internal_work_flow.steps.all()[doc.internal_status].name
-		elif doc.document_type.external_work_flow :
-			doc.external_wf_step = doc.document_type.external_work_flow.steps.all()[doc.external_status].name
 		else:
-			pass
+			doc.internal_wf_step = None
+			if doc.document_type.external_work_flow :
+				doc.external_wf_step = doc.document_type.external_work_flow.steps.all()[doc.external_status].name
+				
+			else :
+				doc.external_wf_step = None
 
+		
 		doc.save()
 		messages.success(request, doc.document_name + ' - Added In WorkFlow - '+ doc.document_type.title)
 		return redirect('workflow:documents-in-workflow')
@@ -62,25 +107,41 @@ class DocumentWorkFlowAddView(View):
 
 class DocumentExecutionListView(ListView):
 	model = Document
-	paginated_by = 10
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
+		
+		doc_list = []
+		for document in context['document_list']:
+			if document.document_type.internal_work_flow and (document.internal_wf_step != 'complete'):
+				for step in document.document_type.internal_work_flow.steps.all():
+					if (step.name == document.internal_wf_step) and (step.authority == self.request.user):
+						doc_list.append(document)
+
+			elif document.document_type.external_work_flow and (document.external_wf_step != 'complete'):
+				for step in document.document_type.external_work_flow.steps.all():
+					if step.name == document.external_wf_step and step.authority == self.request.user :
+						doc_list.append(document)
+
+
+		context['object_list'] = doc_list
+		context['document_list'] = doc_list
+
 		return context
 
 
-def execute_wf(request, status, wf):
+def execute_wf(request, document_name, status, wf):
 	authority = wf.steps.all()[status].authority
 	step_name = None
 	if request.user == authority :
 		status += 1
 		if status == len(wf.steps.all()) :
 			step_name = 'complete'
-			messages.error(request, 'Document Signed at all stages.')
+			messages.success(request, document_name.title() + ' document Signed at all stages.')
 			
 		else:
 			step_name = wf.steps.all()[status].name
-			messages.success(request, 'Document Signed at :'+ wf.steps.all()[status - 1].name + '.')
+			messages.info(request, document_name.title() + ' document Signed at :'+ wf.steps.all()[status - 1].name + '.')
 	else:
 		messages.error(request, 'You are NOT authorised')
 		
@@ -100,14 +161,17 @@ class DocumentVerificationView(View):
 		step_name = None
 		doc = get_object_or_404(Document, id=request.POST['id_'])
 
-		if doc.document_type.internal_work_flow and doc.internal_status < len(doc.document_type.internal_work_flow.steps.all()):
-			status, step_name = execute_wf(request, doc.internal_status, doc.document_type.internal_work_flow)
+		if doc.document_type.internal_work_flow is not None and doc.internal_status < len(doc.document_type.internal_work_flow.steps.all()):
+			status, step_name = execute_wf(request, doc.document_name, doc.internal_status, doc.document_type.internal_work_flow)
 			if status and status != doc.internal_status :
 				doc.internal_status = status
 				doc.internal_wf_step = step_name
 
-		elif doc.document_type.external_work_flow and doc.external_status < len(doc.document_type.external_work_flow.steps.all()):
-			status, step_name = execute_wf(request, doc.external_status, doc.document_type.external_work_flow)
+				if doc.internal_wf_step == 'complete':
+					doc.external_wf_step = doc.document_type.external_work_flow.steps.all()[0].name
+
+		elif doc.document_type.external_work_flow is not None and doc.external_status < len(doc.document_type.external_work_flow.steps.all()):
+			status, step_name = execute_wf(request, doc.document_name, doc.external_status, doc.document_type.external_work_flow)
 			if status and status != doc.external_status :
 				doc.external_status = status
 				doc.external_wf_step = step_name
