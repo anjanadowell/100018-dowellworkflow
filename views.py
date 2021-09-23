@@ -57,21 +57,45 @@ def create_document_type(request, *args, **kwargs):
 
 def getDocumentTypeObject(request, *args, **kwargs):
 	obj = get_object_or_404(DocumentType, id=kwargs['id'])
+
+	internalWF = None
+	externalWF = None
+
+	if obj.internal_work_flow :
+		internalWF = {
+			'title': obj.internal_work_flow.title ,
+			'steps': [{ 'name': step.name, 'authority':step.authority.username} for step in obj.internal_work_flow.steps.all()],
+		}
+
+	if obj.external_work_flow :
+		externalWF = {
+			'title': obj.external_work_flow.title,
+			'steps': [{ 'name': step.name, 'authority':step.authority.username} for step in obj.external_work_flow.steps.all()],
+		}
+
 	return JsonResponse({
 			'id': obj.id,
 			'title': obj.title,
-			'internal_work_flow': {
-				'title': obj.internal_work_flow.title ,
-				'steps': [{ 'name': step.name, 'authority':step.authority.username} for step in obj.internal_work_flow.steps.all()],
-
-			},
-			'external_work_flow': {
-				'title': obj.external_work_flow.title ,
-				'steps': [{ 'name': step.name, 'authority':step.authority.username} for step in obj.external_work_flow.steps.all()],
-			}
+			'internal_work_flow': internalWF,
+			'external_work_flow': externalWF
 		}
 	)
 
+
+class EditorView(View):
+	def get(self, request):
+		return render(request, 'workflow/editor.html')
+
+
+
+
+
+class DocumentCreatedListView(ListView):
+	template_name = 'workflow/created_document_list.html'
+
+	def get_queryset(self, **kwargs):
+		print(kwargs)
+		return Document.objects.filter(created_by=self.request.user)
 
 
 class DocumentWorkFlowAddView(View):
@@ -87,7 +111,7 @@ class DocumentWorkFlowAddView(View):
 		return render(request, 'workflow/add_document.html', context=context)
 
 	def post(self, request):
-		doc = Document(document_name=request.POST['document_name'], document_type=get_object_or_404(DocumentType, id=request.POST['document_type']), notify_users = True)
+		doc = Document(document_name=request.POST['document_name'], document_type=get_object_or_404(DocumentType, id=request.POST['document_type']), created_by=request.user)
 
 		if doc.document_type.internal_work_flow :
 			doc.internal_wf_step = doc.document_type.internal_work_flow.steps.all()[doc.internal_status].name
@@ -113,15 +137,16 @@ class DocumentExecutionListView(ListView):
 		
 		doc_list = []
 		for document in context['document_list']:
-			if document.document_type.internal_work_flow and (document.internal_wf_step != 'complete'):
-				for step in document.document_type.internal_work_flow.steps.all():
-					if (step.name == document.internal_wf_step) and (step.authority == self.request.user):
-						doc_list.append(document)
+			if document.document_type :
+				if document.document_type.internal_work_flow and (document.internal_wf_step != 'complete'):
+					for step in document.document_type.internal_work_flow.steps.all():
+						if (step.name == document.internal_wf_step) and (step.authority == self.request.user):
+							doc_list.append(document)
 
-			elif document.document_type.external_work_flow and (document.external_wf_step != 'complete'):
-				for step in document.document_type.external_work_flow.steps.all():
-					if step.name == document.external_wf_step and step.authority == self.request.user :
-						doc_list.append(document)
+				elif document.document_type.external_work_flow and (document.external_wf_step != 'complete'):
+					for step in document.document_type.external_work_flow.steps.all():
+						if step.name == document.external_wf_step and step.authority == self.request.user :
+							doc_list.append(document)
 
 
 		context['object_list'] = doc_list
@@ -167,7 +192,7 @@ class DocumentVerificationView(View):
 				doc.internal_status = status
 				doc.internal_wf_step = step_name
 
-				if doc.internal_wf_step == 'complete':
+				if doc.internal_wf_step == 'complete' and doc.document_type.external_work_flow is not None:
 					doc.external_wf_step = doc.document_type.external_work_flow.steps.all()[0].name
 
 		elif doc.document_type.external_work_flow is not None and doc.external_status < len(doc.document_type.external_work_flow.steps.all()):
