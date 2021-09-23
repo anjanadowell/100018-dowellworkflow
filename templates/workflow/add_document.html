@@ -50,10 +50,10 @@ Add Document{% endblock %}
                                         <table class="table table-sm table-hover table-dark">
                                           <thead>
                                             <tr>
-                                              <th scope="col"><small>Step No.</small></th>
-                                              <th scope="col"><small>Step Name</small></th>
-                                              <th scope="col"><small>Authority</small></th>
-                                              <th scope="col"></th>
+                                              <th scope="col" class="text-center"><small>Step No.</small></th>
+                                              <th scope="col" class="text-center"><small>Step Name</small></th>
+                                              <th scope="col" class="text-center"><small>Authority</small></th>
+                                              <th scope="col" class="text-center"></th>
                                             </tr>
                                           </thead>
                                           <tbody id="{{wf}}_table">
@@ -110,13 +110,14 @@ Add Document{% endblock %}
         add_button.setAttribute("data-target", "#addWorkFlowModal")
 
         const divElement = document.createElement('div');
-        divElement.className = "d-flex flex-row justify-content-around mt-3 text-muted rounded bg-secondary";
+        divElement.className = "d-flex flex-row justify-content-around mt-3 text-muted rounded";
         divElement.id = 'workflow-container';
 
         const form = document.getElementById('div_id_document_type');
         form.insertBefore(add_button, form.childNodes[2]);
 
-        form.append(divElement)
+        form.append(divElement);
+
 
         //for workflow form Elements script
 
@@ -136,13 +137,19 @@ Add Document{% endblock %}
             td1.innerHTML = item.name;
             const td2 = document.createElement('td');
             td2.innerHTML = item.authority;
-            const td3 = document.createElement('td');
+            
+
+            th.setAttribute("class", "text-center");
+            td1.setAttribute("class", "text-center");
+            td2.setAttribute("class", "text-center")
 
             const rm_link = document.createElement('a');
-            rm_link.className = "btn btn-outline-danger btn-sm remove_btn";
-            rm_link.innerHTML = 'Remove';
+            rm_link.className = "btn btn-outline-danger btn-sm rounded-0 remove_btn";
+            rm_link.innerHTML = '';
 
+            const td3 = document.createElement('td');
             td3.append(rm_link);
+            td3.setAttribute("class", "text-center")
 
             tr.append(th)
             tr.append(td1)
@@ -191,9 +198,11 @@ Add Document{% endblock %}
             function addListenerAfterRemove(){
               document.querySelectorAll('.remove_btn').forEach(item => {
                 item.addEventListener('click', event => {
-                  let found =  list.find(item => (item.name === event.target.parentNode.childNodes[1].innerHTML) && (item.authority === event.target.parentNode.childNodes[2].innerHTML)
-                  );
+                                 
 
+                  let found =  list.find(item => (item.name === event.target.parentNode.parentNode.childNodes[1].innerHTML) && (item.authority === event.target.parentNode.parentNode.childNodes[2].innerHTML)
+                  );
+                 
                   const removedElement = list.splice(list.indexOf(found), 1);
                   const listElement = document.getElementById(type + '_table');
                   listElement.innerHTML = '';
@@ -272,56 +281,13 @@ Add Document{% endblock %}
                 selectField.append(option);
                 selectField.value = option.value;
 
+                selectField.onchange()
+
             });
 
           }
         }
 
-        const selectField = document.getElementById('id_document_type');
-
-        selectField.onchange = function(e){
-          const getDocumentTypeRequest = new Request('/workflow/detail-document-type/'+ selectField.value );
-
-            fetch(getDocumentTypeRequest, {
-                method: 'GET'
-            }).then(async function(response) {
-                const documentTypeObject = await response.json();
-                console.log(documentTypeObject);
-
-                const containerElement = document.getElementById('workflow-container');
-                containerElement.innerHTML = '';
-                const orderedListOne = document.createElement('ol');
-                orderedListOne.innerHTML = "Internal Work Flow ";
-
-                for (step of documentTypeObject.internal_work_flow.steps){
-                  const li = document.createElement('li');
-                  li.innerHTML = step.name + ' - ' + step.authority;
-
-                  orderedListOne.append(li);
-                }
-                containerElement.append(orderedListOne);
-
-                const orderedListTwo = document.createElement('ol');
-                orderedListTwo.innerHTML = "External Work Flow ";
-
-                for (step of documentTypeObject.external_work_flow.steps){
-                  const li = document.createElement('li');
-                  li.innerHTML = step.name + ' - ' + step.authority;
-
-                  orderedListTwo.append(li);
-                }
-
-                containerElement.append(orderedListTwo);
-            });
-          
-        }
-
-
-
 </script>
-
-
-
-
 
 {% endblock %}
