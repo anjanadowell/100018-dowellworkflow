@@ -40,7 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'accounts',
     'pages',
-    'crispy_forms'
+    'crispy_forms',
+    
+    'workflow'
 ]
 
 SITE_ID = 1
